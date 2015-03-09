@@ -41,38 +41,46 @@ namespace LODsample
             {
                 using (var resStream = res.GetResponseStream())
                 {
+                    var pList = new List<string>();
                     var serializer = new DataContractJsonSerializer(typeof(LOD));
                     //info = (LOD)serializer.ReadObject(resStream);
                     var obj = DynamicJson.Parse(resStream);
                     //var objj = from foo in obj["results"] where ;
-                    foreach (var item in obj.results)
+                     foreach (var result in obj.results)
                     {
-                        if (item.Key == "bindings")
+                        if (result.Key == "bindings")
                         {
-                            foreach (var it in item.Value)
+                            foreach (var it in result.Value)
                             {
-
-                                foreach(var val in it.o)
+                                var label = "";
+                                var o = "";
+                                foreach(var val in it.label)
                                 {
                                     if(val.Key == "value")
                                     {
-                                        var o = val.Value;
+                                        //pList.Add( val.Value);
+                                        //dataGridView1.Rows.Add(val.Value,"作成");
+                                        label = val.Value;
                                     }
                                 }
-                                //if (it.Key == "p")
-                                //{
 
-                                    //var p = it.p;
-                                    //var o = it.o;
-                                //}
-                                
-                                //info = (LOD)serializer.ReadObject(o);
+                                foreach (var val in it.o)
+                                {
+                                    if (val.Key == "value")
+                                    {
+                                        //pList.Add( val.Value);
+                                        //dataGridView1.Rows.Add(val.Value, "作成");
+                                        o = val.Value;
+                                    }
+                                }
+
+                                dataGridView1.Rows.Add(label,o, "作成");
                             
                             }
                         }
                     }
                 }
-            }
+            } 
 
             
 
@@ -85,11 +93,8 @@ namespace LODsample
             var arg = "東京都";
             var format = "json";
 
-            // 実際のSPARQLクエリ文。URLを打つのがめんどい場合はPREFIX使おう
-        // 今回は関数の引数に実際の値となるもの（東京都とか岩手県とか）を渡す感じで
-        // また、Abstractの項目の値のみを取得しています。全部取得する場合は?pとかで
         //var query = "select distinct * where {"+ " <" + "http://ja.dbpedia.org/resource/" +arg  +"> <"+"http://dbpedia.org/ontology/abstract> ?o . }";
-            var query = "select distinct * where {" + " ?s <http://www.w3.org/2000/01/rdf-schema#label> ?o . }";
+            var query = "select distinct ?o ?label where { ?s"+ "<" +"http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?o .?o   <http://www.w3.org/2000/01/rdf-schema#label> ?label . FILTER ( lang(?label) = \"ja\") }";
         var urlen = System.Web.HttpUtility.UrlEncode(query);
             return endpoint + "query=" +urlen +"&format=" +format;
         }
@@ -106,6 +111,86 @@ namespace LODsample
 
 
         }
+
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // ボタン列かどうかを確認 
+            if (e.ColumnIndex == 1)
+            {
+                string property = this.dataGridView1.Rows[e.RowIndex].Cells[0].Value.ToString();
+
+                var query = "select distinct * where {" + " ?s  <"+property+"> ?o . }";
+                richTextBox1.Text = query;
+
+
+
+                
+            } 
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            dataGridView2.Rows.Clear();
+            var endpoint = txtEndpoint.Text;
+            var format = "json";
+
+            var urlen = System.Web.HttpUtility.UrlEncode(richTextBox1.Text);
+            var url = endpoint + "query=" + urlen + "&format=" + format;
+
+            //エンドポイントのアクセス
+            // HTTPアクセス
+            var req = WebRequest.Create(url);
+            req.Headers.Add("Accept-Language:ja,en-us;q=0.7,en;q=0.3");
+            var res = req.GetResponse();
+
+
+            using (res)
+            {
+                using (var resStream = res.GetResponseStream())
+                {
+                    var pList = new List<string>();
+                    var serializer = new DataContractJsonSerializer(typeof(LOD));
+                    //info = (LOD)serializer.ReadObject(resStream);
+                    var obj = DynamicJson.Parse(resStream);
+                    
+                    foreach (var result in obj.results)
+                    {
+                        if (result.Key == "bindings")
+                        {
+                            foreach (var it in result.Value)
+                            {
+
+                                string s = string.Empty;
+                                string p = string.Empty;
+                                string o = string.Empty;
+
+                                foreach (var val in it.s)
+                                {
+                                    if (val.Key == "value")
+                                    {
+                                        s = val.Value;
+                                       
+                                    }
+                                }
+
+                                foreach (var val in it.o)
+                                {
+                                    if (val.Key == "value")
+                                    {
+                                        o = val.Value;
+                                       
+                                    }
+                                }
+
+                                dataGridView2.Rows.Add(s,p,o);
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
 
     }
 }
