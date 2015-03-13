@@ -21,13 +21,13 @@ namespace LODsample
         {
             InitializeComponent();
             txtEndpoint.Text = "http://ja.dbpedia.org/sparql?";
+            classGridView.Rows.Clear();
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
             //エンドポイントURL作成
             var url = URL作成();
-            //var url = "http://ja.dbpedia.org/sparql?query=select+distinct+*+where+%7B+%3Chttp%3A%2F%2Fja.dbpedia.org%2Fresource%2F%E6%9D%B1%E4%BA%AC%E9%83%BD%3E+%3Fp+%3Fo+.+%7D&format=json%2Fhtml&timeout=0&debug=on";
             
             //エンドポイントのアクセス
             // HTTPアクセス
@@ -74,7 +74,7 @@ namespace LODsample
                                     }
                                 }
 
-                                dataGridView1.Rows.Add(label,o, "作成");
+                                classGridView.Rows.Add(label,o, "作成");
                             
                             }
                         }
@@ -115,14 +115,82 @@ namespace LODsample
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             // ボタン列かどうかを確認 
-            if (e.ColumnIndex == 1)
+            if (e.ColumnIndex == 2)
             {
-                string property = this.dataGridView1.Rows[e.RowIndex].Cells[0].Value.ToString();
+                string property = this.classGridView.Rows[e.RowIndex].Cells[1].Value.ToString();
 
-                var query = "select distinct * where {" + " ?s  <"+property+"> ?o . }";
-                richTextBox1.Text = query;
+                //var query = "select distinct * where {" + " ?s  <"+property+"> ?o . }";
+                var query ="select distinct  ?p ?label where { ?s " +"<" + "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" +"> <"+property + ">" +" ."
+                               + "?s ?p  ?test."
+                               + "?p " + "<" + "http://www.w3.org/2000/01/rdf-schema#label> ?label .FILTER(lang(?label) = \"ja\") }";
+                //richTextBox1.Text = query;
+
+                propertyGrid.Rows.Clear();
+                var endpoint = txtEndpoint.Text;
+                var format = "json";
+
+                var urlen = System.Web.HttpUtility.UrlEncode(query);
+                var url = endpoint + "query=" + urlen + "&format=" + format;
+
+                //エンドポイントのアクセス
+                // HTTPアクセス
+                var req = WebRequest.Create(url);
+                req.Headers.Add("Accept-Language:ja,en-us;q=0.7,en;q=0.3");
+                var res = req.GetResponse();
 
 
+                using (res)
+                {
+                    using (var resStream = res.GetResponseStream())
+                    {
+                        var pList = new List<string>();
+                        var serializer = new DataContractJsonSerializer(typeof(LOD));
+                        //info = (LOD)serializer.ReadObject(resStream);
+                        var obj = DynamicJson.Parse(resStream);
+
+                        foreach (var result in obj.results)
+                        {
+                            if (result.Key == "bindings")
+                            {
+                                foreach (var it in result.Value)
+                                {
+                                    string p = string.Empty;
+                                    string label = string.Empty;
+
+                                    //foreach (var val in it.s)
+                                    //{
+                                    //    if (val.Key == "value")
+                                    //    {
+                                    //        s = val.Value;
+
+                                    //    }
+                                    //}
+
+                                    foreach (var val in it.p)
+                                    {
+                                        if (val.Key == "value")
+                                        {
+                                            p = val.Value;
+
+                                        }
+                                    }
+
+                                    foreach (var val in it.label)
+                                    {
+                                        if (val.Key == "value")
+                                        {
+                                            label = val.Value;
+
+                                        }
+                                    }
+
+                                    propertyGrid.Rows.Add(p,label);
+
+                                }
+                            }
+                        }
+                    }
+                }
 
                 
             } 
@@ -130,7 +198,7 @@ namespace LODsample
 
         private void button4_Click(object sender, EventArgs e)
         {
-            dataGridView2.Rows.Clear();
+            resultGridView.Rows.Clear();
             var endpoint = txtEndpoint.Text;
             var format = "json";
 
@@ -164,25 +232,34 @@ namespace LODsample
                                 string p = string.Empty;
                                 string o = string.Empty;
 
-                                foreach (var val in it.s)
+                                //foreach (var val in it.s)
+                                //{
+                                //    if (val.Key == "value")
+                                //    {
+                                //        s = val.Value;
+                                       
+                                //    }
+                                //}
+
+                                foreach (var val in it.p)
                                 {
                                     if (val.Key == "value")
                                     {
-                                        s = val.Value;
-                                       
+                                        p = val.Value;
+
                                     }
                                 }
 
-                                foreach (var val in it.o)
-                                {
-                                    if (val.Key == "value")
-                                    {
-                                        o = val.Value;
+                                //foreach (var val in it.o)
+                                //{
+                                //    if (val.Key == "value")
+                                //    {
+                                //        o = val.Value;
                                        
-                                    }
-                                }
+                                //    }
+                                //}
 
-                                dataGridView2.Rows.Add(s,p,o);
+                                resultGridView.Rows.Add(s,p,o);
 
                             }
                         }
